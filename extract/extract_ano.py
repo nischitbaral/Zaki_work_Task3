@@ -1,54 +1,38 @@
-import ijson
+import ijson    
 import zipfile
 import json
 from decimal import Decimal 
+import os
 
+def ext_file(zip_file):
+    def con_decimal(obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return obj 
+     
+    out_file = os.path.join(os.getcwd(),'out_files')
+    os.makedirs(out_file, exist_ok=True)
 
-prov_data = []
-net_data =[]
-                             
-                    
-def con_decimal(obj):
-    if isinstance(obj, Decimal):
-        return float(obj)
+    net_file = os.path.join(out_file, 'net_data.json')
+    prov_path = os.path.join(out_file, 'provider.json')
 
-
-
-with zipfile.ZipFile('/home/nischit-baral/Desktop/Zaki_work_Task3/MagnaCarePPO_In-Network.zip', 'r') as zf:
+    with zipfile.ZipFile(zip_file, 'r') as zf:
         for name in zf.namelist():
             with zf.open(name, 'r') as f:
                 print(name)
-                for item in ijson.items(f, 'provider_references.item'):
-                    prov_data.append(item)
                 
+
+                with open('prov_path', 'w') as file_new:
+                    for item in ijson.items(f, 'provider_references.item'):
+                        file_new.write(json.dumps(item,default=con_decimal) + '\n')
+                        # out_file.write('\n')
+                
+
                 f.seek(0)
 
-                for item in ijson.items(f, 'in_network.item'):
-                    net_data.append(item)
+                with open('net_file', 'w') as file_agn:
+                    for item in ijson.items(f, 'in_network.item'):
+                    
+                        file_agn.write(json.dumps(item,default=con_decimal) + '\n')
 
-
-with open('prov_tab.json','w') as out_file:
-    json.dump(prov_data, out_file, indent=4, default=con_decimal)
-    out_file.write('\n')
-
-with open('in_net.json','w') as out_file:
-    json.dump(net_data,out_file,indent=4,default=con_decimal)
-    out_file.write('\n')
-
-
-
-
-
-# with zipfile.ZipFile('/home/nischit-baral/Desktop/Zaki_work_Task3/MagnaCarePPO_In-Network.zip', 'r') as zf:
-#         for name in zf.namelist():
-#             with zf.open(name, 'r') as f:
-#                 print(name)
-#                 for item in ijson.items(f, 'in_network.item'):
-#                     records.append(item)
-
-# with open('exampleeee.json','w') as out_file:
-#     json.dump(records,out_file,indent=4,default=con_decimal) + '\n'
-
-
-
- 
+    return net_file,prov_path                    
