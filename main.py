@@ -9,7 +9,7 @@ def main():
     # zip_file = sys.argv[1]
 
     parser = argparse.ArgumentParser(description="ETL pipeline for processing ZIP files containing rate and provider data.")
-    parser.add_argument("zip_file", help="Path to the ZIP file to process")
+    parser.add_argument("--zip_file",required=True, help="Path to the ZIP file to process")
 
     args = parser.parse_args()
     net_file,prov_path= extract_ano.ext_file(args.zip_file)
