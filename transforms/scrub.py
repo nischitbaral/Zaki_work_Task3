@@ -1,14 +1,13 @@
 
-
-
-from pyspark.sql import SparkSession 
 from pyspark.sql.functions import explode,col,hash,expr,split,array,when
 from pyspark.sql.types import ArrayType, IntegerType,ShortType
+import yaml
 
 
-def scrub_file(net_file,prov_path):
+def scrub_file(net_file,prov_path,etl):
 
-    spark = SparkSession.builder.appName('new_network').config("spark.driver.memory", "4g").getOrCreate()
+    
+    spark = etl.spark
 
 
 
@@ -116,7 +115,6 @@ def scrub_file(net_file,prov_path):
 
 
 
-
     rename_col = df.withColumnRenamed('tin_value','tin')
     rename_col.show()
 
@@ -137,7 +135,7 @@ def scrub_file(net_file,prov_path):
 
 
     scrub_prov ='out_files/scrub_prov.parquet'
-    rate_cast.write.parquet(scrub_prov)
+    rate_cast.write.option("compression", "snappy").mode('overwrite').parquet(scrub_prov)
     
     return scrub_nets,scrub_prov
 
