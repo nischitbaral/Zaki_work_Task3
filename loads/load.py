@@ -45,12 +45,25 @@ def load_file(scrub_nets,scrub_prov,etl):
 
     cur = conn.cursor()
     create_table_query = """
-    CREATE TABLE IF NOT EXISTS provider_new (
-        provider_group_id BIGINT,
-        npi BIGINT,
-        tin_type SMALLINT,
-        tin TEXT
-    );
+    DROP TABLE IF EXISTS provider_new;
+   
+    CREATE TABLE provider_new (
+    provider_group_id BIGINT,
+    npi BIGINT,
+    tin_type SMALLINT,
+    tin VARCHAR,
+    prv_city VARCHAR,
+    prv_phone VARCHAR,
+    prv_state VARCHAR,
+    prv_street_1 VARCHAR,
+    prv_type_code INTEGER,
+    prv_zip VARCHAR,
+    full_name VARCHAR,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    taxonomy TEXT[],
+    prv_specialty TEXT[]
+);
     """
     cur.execute(create_table_query)
 
