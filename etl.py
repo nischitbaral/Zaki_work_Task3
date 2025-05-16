@@ -31,19 +31,21 @@ class ETL:
         self.port = new_yml['POSTGRES']['PORT']
 
 
-        self.spark = SparkSession.builder \
-            .appName("ETL") \
-            .config("spark.driver.memory", self.dri_mem )\
-            .getOrCreate()
-        
 
-    def execute(self,zip_file):
+    def execute(self,zip_file,provider_dtl_path):
+        
        
         self.logger.info("Extract")
         net_file, prov_path = extract_ano.ext_file(zip_file)
 
+        self.spark = SparkSession.builder \
+            .appName("ETL") \
+            .config("spark.driver.memory", self.dri_mem )\
+            .getOrCreate()
+       
+
         self.logger.info("Scrub")
-        scrub_nets, scrub_prov = scrub.scrub_file(net_file, prov_path, self)
+        scrub_nets, scrub_prov = scrub.scrub_file(net_file, prov_path,provider_dtl_path,self)
 
         self.logger.info("Load")
         load.load_file(scrub_nets, scrub_prov, self)
