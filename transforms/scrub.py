@@ -1,5 +1,5 @@
 
-from pyspark.sql.functions import explode,col,hash,expr,split,array,when,concat, lit
+from pyspark.sql.functions import explode,col,hash,expr,split,array,when,concat, lit,concat_ws
 from pyspark.sql.types import ArrayType, IntegerType,ShortType
 
 def scrub_file(net_file,prov_path,provider_dtl_path,etl):
@@ -85,7 +85,7 @@ def scrub_file(net_file,prov_path,provider_dtl_path,etl):
                        )
 
     df_castt = df_chng.withColumn("prv_type_code",col("prv_type_code").cast(IntegerType()))
-    df_merge = df_castt.withColumn("full_name",concat(col('provider_first_name'),lit(" "),col('provider_last_name'),lit(" "),col('provider_middle_name')))
+    df_merge = df_castt.withColumn("full_name",concat_ws(" ","provider_first_name", "provider_middle_name","provider_last_name"))
     df_merge1=df_merge.drop("provider_first_name","provider_last_name","provider_middle_name")
 
 
@@ -105,38 +105,29 @@ def scrub_file(net_file,prov_path,provider_dtl_path,etl):
 
     df_arr4.printSchema()
 
-    df_join = df.alias("old").join(
-        df_arr4.alias("new"),
+    df_join = df.join(
+        df_arr4,
         how="inner",
-        on=col("old.npi") == col("new.npi")
-    )
-
-    df_res = df_join.select(
-        col("provider_group_id"),
-        col("old.npi"),
-        col("tin_type"),
-        col("tin"),
-        col("prv_city"),
-        col("prv_phone"),
-        col("prv_state"),
-        col("prv_street_1"),
-        col("prv_type_code"),
-        col("prv_zip"),
-        col("full_name"),
-        col("latitude"),
-        col("longitude"),
-        col("taxonomy"),
-        col("prv_specialty")
+        on="npi"
     )
 
 
-    df_res.printSchema()
+
+    excluded_df = df.join(
+        df_arr4,
+        how="left_anti",
+        on="npi"
+    )
+
+    exclude_df ='out_files/excluded.parquet'
+
+    df_join.printSchema()
 
 
 
     scrub_prov ='out_files/scrub_prov.parquet'
-    df_res.write.option("compression", "snappy").mode('overwrite').parquet(scrub_prov)
-
+    df_join.write.mode('overwrite').parquet(scrub_prov)
+    excluded_df.write.mode('overwrite').parquet(exclude_df)
     return scrub_nets,scrub_prov
 
 
