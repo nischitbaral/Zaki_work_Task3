@@ -1,5 +1,5 @@
 
-from pyspark.sql.functions import explode,col,hash,expr,split,array,when,concat, lit,concat_ws
+from pyspark.sql.functions import explode,col,hash,expr,split,array,when,concat, lit,concat_ws,array_except
 from pyspark.sql.types import ArrayType, IntegerType,ShortType
 
 def scrub_file(net_file,prov_path,provider_dtl_path,etl):
@@ -102,7 +102,7 @@ def scrub_file(net_file,prov_path,provider_dtl_path,etl):
 
     df_arr3 = df_arr1.withColumn("prv_specialty",array(col("prv_specialty_1_desc"),col("prv_specialty_2_desc"),col("prv_specialty_3_desc")))
     df_arr4=df_arr3.drop("prv_specialty_1_desc","prv_specialty_2_desc","prv_specialty_3_desc")
-
+    
     df_arr4.printSchema()
 
     df_join = df.join(
@@ -123,8 +123,11 @@ def scrub_file(net_file,prov_path,provider_dtl_path,etl):
 
     df_join.printSchema()
 
-
-
+    df_join = df_join.withColumn(
+    "taxonomy",array_except(col("taxonomy"),array(lit(None), lit("")))) \
+        .withColumn(
+    "prv_specialty",array_except(col("prv_specialty"),array(lit(None), lit(""))))
+   
     scrub_prov ='out_files/scrub_prov.parquet'
     df_join.write.mode('overwrite').parquet(scrub_prov)
     excluded_df.write.mode('overwrite').parquet(exclude_df)
