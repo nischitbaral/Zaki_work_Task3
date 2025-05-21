@@ -1,6 +1,8 @@
 
 import yaml
 from extract import extract_nrpr
+from pyspark.sql import SparkSession
+from transforms import scrub_nrpr
 
 
 
@@ -35,3 +37,10 @@ class ETL:
        
         self.logger.info("Extract")
         extract_nrpr.ext_nrpr(zip_filess)
+
+        self.spark = SparkSession.builder \
+            .appName("ETL_nrpr") \
+            .config("spark.driver.memory", self.dri_mem )\
+            .getOrCreate()
+        self.logger.info("Scrub")
+        scrub_nrpr.scr_nrpr(self)
