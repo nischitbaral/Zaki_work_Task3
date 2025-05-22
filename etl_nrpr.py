@@ -3,6 +3,8 @@ import yaml
 from extract import extract_nrpr
 from pyspark.sql import SparkSession
 from transforms import scrub_nrpr
+from process import process
+from loads import load_nrpr
 
 
 
@@ -32,15 +34,19 @@ class ETL:
 
 
 
-    def execute(self,zip_filess):
+    def execute(self,zip_filess,hlt_prv):
         
        
         self.logger.info("Extract")
-        extract_nrpr.ext_nrpr(zip_filess)
+        combined_file = extract_nrpr.ext_nrpr(zip_filess)
 
-        self.spark = SparkSession.builder \
-            .appName("ETL_nrpr") \
-            .config("spark.driver.memory", self.dri_mem )\
-            .getOrCreate()
+        self.spark = SparkSession.builder.appName("ETL_nrpr").config("spark.driver.memory", self.dri_mem ).getOrCreate()
+     
         self.logger.info("Scrub")
-        scrub_nrpr.scr_nrpr(self)
+        main_provider,df_arr4,rate_tbl,df_drop,df_select = scrub_nrpr.scr_nrpr(combined_file,hlt_prv,self)
+
+        net_nrpr,prv_nrpr = process.process_file(main_provider,df_arr4,rate_tbl,df_select)
+        
+        
+        self.logger.info("load")
+        load_nrpr.loads_file(net_nrpr,prv_nrpr)
