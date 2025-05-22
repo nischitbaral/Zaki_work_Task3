@@ -11,6 +11,8 @@ def main():
     # parser.add_argument("--zip_file", help="Path to the ZIP file to process")
     # parser.add_argument("--provider_dtl_path", help="Path to tht provider_detail.json")
     parser.add_argument("--zip_filess", help="Path to the ZIP file to process")
+    parser.add_argument("--hlt_prv", help="Path to the ZIP file to process")
+
 
   
 
@@ -26,11 +28,11 @@ def main():
    
     etl = ETL(logger)
     # etl.execute(args.zip_file,args.provider_dtl_path)
-    etl.execute(args.zip_filess)
+    etl.execute(args.zip_filess,args.hlt_prv)
 
   
     
-    # net_file,prov_path= extract_ano.ext_file(zip_file)
+    # net_file,prov_path= extract_ano.ext_file(zip_file) 
 
 
 if __name__ == "__main__":
