@@ -1,12 +1,11 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import explode,col,hash,expr,array,concat_ws,concat,when,array_except,lit,lpad
+from pyspark.sql.functions import explode,col,hash,expr,array,concat_ws,concat,when,array_except,lit,lpad,regexp_replace
 from pyspark.sql.types import ArrayType, IntegerType, ShortType
 
 def scr_nrpr(combined_file,hlt_prv,etl):
     spark = etl.spark
     df_pr = spark.read.option('multiline','true').json(combined_file)
 
-    df_pr.printSchema()
     nrpr_data=df_pr.selectExpr("*", "explode(in_network) as net")
     network_file = nrpr_data.withColumn("rates", explode("net.negotiated_rates"))
     network_file = network_file.withColumn("prices", explode("rates.negotiated_prices"))
@@ -29,16 +28,16 @@ def scr_nrpr(combined_file,hlt_prv,etl):
 
         )
 
-    network_flat.printSchema()
+    
 
     df_merge = network_flat.withColumn("provider_group_id",concat("npi", "tin"))
     df_merge.printSchema()
     df_hash = df_merge.withColumn('provider_group_id',hash("provider_group_id"))
-    df_hash.show()
+  
 
-    rate_tbl =  df_hash.drop('npi','tin_type','tin')
+    rate_tbl =  df_hash.drop('npi','tin_type','tin').withColumn("service_code",col("service_code").cast(ArrayType(IntegerType())))
   #rate_data
-    rate_tbl.show()
+
 
     net_nrpr = 'out_folder/net_nrpr.parquet'
 
@@ -47,7 +46,8 @@ def scr_nrpr(combined_file,hlt_prv,etl):
 #billing_code_tax#######################
     df_bc = spark.read.option('header','True').csv('/home/nischit-baral/Desktop/Zaki_work_Task3/ignore/billing_taxonomy_list.csv')
     df_lpad = df_bc.withColumn("billing_code", lpad(col("billing_code"), 5, "0"))
-    df_drop = df_lpad.drop('_c4','_c5','_c6')
+    df_drop = df_lpad.drop('_c4','_c5','_c6') \
+        .withColumn("taxonomy_list",array(regexp_replace(col("taxonomy_list"), r"^\{|\}$", "")))
 
     df_drop.printSchema()
     df_select = df_drop.select(
@@ -63,8 +63,7 @@ def scr_nrpr(combined_file,hlt_prv,etl):
             "tin",
             "provider_group_id")
 
-    provider_tbl.printSchema()
-
+  
     rem_hyp = provider_tbl.withColumn('tin', expr("replace(tin,'-','')"))
     df = rem_hyp.withColumn('tin_type',
             when((col('tin_type')== 'ein'), 1).when((col('tin_type')== 'npi'), 2)
@@ -72,7 +71,7 @@ def scr_nrpr(combined_file,hlt_prv,etl):
                             )
     main_provider = df.withColumn("tin_type", col("tin_type").cast(ShortType()))
   ##provider_data
-    main_provider.show()
+  
 
 
     #highlight_prv
@@ -90,8 +89,8 @@ def scr_nrpr(combined_file,hlt_prv,etl):
 
     df_newws = df_merge1.select(
         "*",  
-        col("loc.lat").alias("latitude"),
-        col("loc.lon").alias("longitude")
+        col("loc.lat").alias("latitude").cast("double"),
+        col("loc.lon").alias("longitude").cast("double")
     )
 
     df_new2 = df_newws.drop('loc')
@@ -103,22 +102,22 @@ def scr_nrpr(combined_file,hlt_prv,etl):
     df_arr4=df_arr3.drop("prv_specialty_1_desc","prv_specialty_2_desc","prv_specialty_3_desc")
 
     df_arr4.printSchema()
-
+    df_arr4 = df_arr4.withColumn(
+        "taxonomy",array_except(col("taxonomy"),array(lit(None), lit("")))) \
+            .withColumn(
+        "prv_specialty",array_except(col("prv_specialty"),array(lit(None), lit(""))))
     df_join = main_provider.join(
         df_arr4,
         how="inner",
         on=["npi","tin"]
 
     )
-    df_join = df_join.withColumn(
-        "taxonomy",array_except(col("taxonomy"),array(lit(None), lit("")))) \
-            .withColumn(
-        "prv_specialty",array_except(col("prv_specialty"),array(lit(None), lit(""))))
+    
     
 
-    prv_nrpr = 'out_folder/net_nrpr.parquet'
-
+    prv_nrpr = 'out_folder/prv_nrpr.parquet'
     df_join.write.mode('overwrite').parquet(prv_nrpr)
+
 
     return main_provider,df_arr4,rate_tbl,df_drop,df_select
     
