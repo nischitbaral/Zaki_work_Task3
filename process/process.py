@@ -10,7 +10,8 @@ def process_file(main_provider,df_arr4,rate_tbl,df_select):
 
     df_joined = df_newjin.join( df_join,how="inner",on='provider_group_id')
 
-    filter_spec = df_joined.filter(size(array_intersect(col("prv_taxonomy"), col("taxonomy_list"))) > 0)
+    filter_spec = df_joined.filter(size(array_intersect(col("taxonomy"), col("taxonomy_list"))) > 0)
+
 
     filter_spec.show()
 
