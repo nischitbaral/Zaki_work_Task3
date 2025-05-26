@@ -5,37 +5,36 @@ from pyspark.sql.types import ArrayType, IntegerType, ShortType
 def scr_nrpr(combined_file,hlt_prv,etl):
     spark = etl.spark
     df_pr = spark.read.option('multiline','true').json(combined_file)
-
-    nrpr_data=df_pr.selectExpr("*", "explode(in_network) as net")
-    network_file = nrpr_data.withColumn("rates", explode("net.negotiated_rates"))
-    network_file = network_file.withColumn("prices", explode("rates.negotiated_prices"))
-    network_file = network_file.withColumn('provider',explode("rates.provider_groups"))
-    network_file = network_file.withColumn('id',explode("provider.npi"))
-
-
-    network_flat = network_file.selectExpr(
-            "net.billing_code",
-            "net.billing_code_type",
-            "net.negotiation_arrangement",
-            "prices.billing_class as billing_class",
-            "prices.billing_code_modifier as billing_code_modifier",
-            "prices.negotiated_rate as negotiated_rate",
-            "prices.negotiated_type as negotiated_type",
-            "prices.service_code as service_code",
-            'id as npi',
-            "provider.tin.type as tin_type",
-            "provider.tin.value as tin"
-
+    df_pr = (
+        df_pr
+        .selectExpr("*", "explode(in_network) as net").drop("in_network")
+        .select("*", "net.*").drop("net")
+        .selectExpr("*", "explode(negotiated_rates) as rates").drop("negotiated_rates")
+        .selectExpr("*", "explode(rates.negotiated_prices) as prices").drop("negotiated_prices")
+        .selectExpr("*", "explode(rates.provider_groups) as provider").drop("rates")
+        .selectExpr("*", "provider.tin.type as tin_type", "provider.tin.value as tin").drop("provider_groups")
+        .selectExpr("*", "explode(provider.npi) as npi").drop("provider")
+        .select("*", "prices.*").drop("prices")
         )
-
     
 
-    df_merge = network_flat.withColumn("provider_group_id",concat("npi", "tin"))
-    df_merge.printSchema()
-    df_hash = df_merge.withColumn('provider_group_id',hash("provider_group_id"))
+    df_merge = df_pr.withColumn("provider_group_id",hash(concat("npi", "tin")))
   
+    df_select_nr = df_merge.select(
+        "billing_code",
+        "billing_code_type",
+        "negotiation_arrangement",
+        "billing_class",
+        "billing_code_modifier",
+        "negotiated_rate",
+        "negotiated_type",
+        "service_code",
+        "provider_group_id"
+        )
 
-    rate_tbl =  df_hash.drop('npi','tin_type','tin').withColumn("service_code",col("service_code").cast(ArrayType(IntegerType())))
+
+
+    rate_tbl =  df_select_nr.withColumn("service_code",col("service_code").cast(ArrayType(IntegerType())))
   #rate_data
 
 
@@ -58,7 +57,7 @@ def scr_nrpr(combined_file,hlt_prv,etl):
 
 
 
-    provider_tbl = df_hash.selectExpr( 'npi',
+    provider_tbl = df_merge.select( 'npi',
             "tin_type",
             "tin",
             "provider_group_id")
